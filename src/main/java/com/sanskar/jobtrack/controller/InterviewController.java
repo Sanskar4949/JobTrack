@@ -26,7 +26,10 @@ public class InterviewController {
             @Valid @RequestBody InterviewRequest request) {
 
         InterviewResponse created =
-                interviewService.createInterview(applicationId, request);
+                interviewService.createInterview(
+                        applicationId,
+                        request
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -38,7 +41,9 @@ public class InterviewController {
             @PathVariable Long applicationId) {
 
         return ResponseEntity.ok(
-                interviewService.getInterviewsByApplication(applicationId)
+                interviewService.getInterviewsByApplication(
+                        applicationId
+                )
         );
     }
 
@@ -48,7 +53,10 @@ public class InterviewController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                interviewService.getInterviewById(id)
+                interviewService.getInterviewById(
+                        applicationId,
+                        id
+                )
         );
     }
 
@@ -59,7 +67,11 @@ public class InterviewController {
             @Valid @RequestBody InterviewRequest request) {
 
         return ResponseEntity.ok(
-                interviewService.updateInterview(id, request)
+                interviewService.updateInterview(
+                        applicationId,
+                        id,
+                        request
+                )
         );
     }
 
@@ -68,7 +80,10 @@ public class InterviewController {
             @PathVariable Long applicationId,
             @PathVariable Long id) {
 
-        interviewService.deleteInterview(id);
+        interviewService.deleteInterview(
+                applicationId,
+                id
+        );
 
         return ResponseEntity.noContent().build();
     }

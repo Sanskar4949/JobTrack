@@ -3,13 +3,15 @@ package com.sanskar.jobtrack.service;
 import com.sanskar.jobtrack.dto.ApplicationRequest;
 import com.sanskar.jobtrack.dto.ApplicationResponse;
 import com.sanskar.jobtrack.entity.Application;
+import com.sanskar.jobtrack.entity.User;
 import com.sanskar.jobtrack.enums.ApplicationStatus;
 import com.sanskar.jobtrack.exception.ResourceNotFoundException;
 import com.sanskar.jobtrack.repository.ApplicationRepository;
-import org.springframework.stereotype.Service;
+import com.sanskar.jobtrack.security.CurrentUserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
@@ -17,16 +19,24 @@ import java.util.List;
 public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
+    private final CurrentUserService currentUserService;
 
-    public ApplicationService(ApplicationRepository applicationRepository) {
+    public ApplicationService(
+            ApplicationRepository applicationRepository,
+            CurrentUserService currentUserService) {
+
         this.applicationRepository = applicationRepository;
+        this.currentUserService = currentUserService;
     }
 
     public ApplicationResponse createApplication(
             ApplicationRequest request) {
 
+        User currentUser = currentUserService.getCurrentUser();
+
         Application application = new Application();
 
+        application.setUser(currentUser);
         application.setCompanyName(request.getCompanyName());
         application.setJobTitle(request.getJobTitle());
         application.setLocation(request.getLocation());
@@ -43,26 +53,40 @@ public class ApplicationService {
 
     public List<ApplicationResponse> getAllApplications() {
 
-        return applicationRepository.findAll()
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
+        return applicationRepository
+                .findByUserId(userId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
+
     public Page<ApplicationResponse> getApplicationsPaginated(
             int page,
             int size) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         Pageable pageable = PageRequest.of(page, size);
 
         return applicationRepository
-                .findAll(pageable)
+                .findByUserId(userId, pageable)
                 .map(this::mapToResponse);
     }
 
     public ApplicationResponse getApplicationById(Long id) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         Application application = applicationRepository
-                .findById(id)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Application not found with id: " + id
@@ -76,8 +100,12 @@ public class ApplicationService {
             Long id,
             ApplicationRequest request) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         Application existing = applicationRepository
-                .findById(id)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Application not found with id: " + id
@@ -147,8 +175,12 @@ public class ApplicationService {
 
     public void deleteApplication(Long id) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         Application existing = applicationRepository
-                .findById(id)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Application not found with id: " + id
@@ -161,8 +193,12 @@ public class ApplicationService {
     public List<ApplicationResponse> getApplicationsByStatus(
             ApplicationStatus status) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         return applicationRepository
-                .findByStatus(status)
+                .findByUserIdAndStatus(userId, status)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -171,8 +207,15 @@ public class ApplicationService {
     public List<ApplicationResponse> searchByCompany(
             String companyName) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         return applicationRepository
-                .findByCompanyNameContainingIgnoreCase(companyName)
+                .findByUserIdAndCompanyNameContainingIgnoreCase(
+                        userId,
+                        companyName
+                )
                 .stream()
                 .map(this::mapToResponse)
                 .toList();

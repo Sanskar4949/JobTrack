@@ -4,9 +4,11 @@ import com.sanskar.jobtrack.dto.InterviewRequest;
 import com.sanskar.jobtrack.dto.InterviewResponse;
 import com.sanskar.jobtrack.entity.Application;
 import com.sanskar.jobtrack.entity.Interview;
+import com.sanskar.jobtrack.entity.User;
 import com.sanskar.jobtrack.exception.ResourceNotFoundException;
 import com.sanskar.jobtrack.repository.ApplicationRepository;
 import com.sanskar.jobtrack.repository.InterviewRepository;
+import com.sanskar.jobtrack.security.CurrentUserService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,24 +18,33 @@ public class InterviewService {
 
     private final InterviewRepository interviewRepository;
     private final ApplicationRepository applicationRepository;
+    private final CurrentUserService currentUserService;
 
     public InterviewService(
             InterviewRepository interviewRepository,
-            ApplicationRepository applicationRepository) {
+            ApplicationRepository applicationRepository,
+            CurrentUserService currentUserService) {
 
         this.interviewRepository = interviewRepository;
         this.applicationRepository = applicationRepository;
+        this.currentUserService = currentUserService;
     }
 
     public InterviewResponse createInterview(
             Long applicationId,
             InterviewRequest request) {
 
+        User currentUser = currentUserService.getCurrentUser();
+
         Application application = applicationRepository
-                .findById(applicationId)
+                .findByIdAndUserId(
+                        applicationId,
+                        currentUser.getId()
+                )
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Application not found with id: " + applicationId
+                                "Application not found with id: "
+                                        + applicationId
                         ));
 
         Interview interview = Interview.builder()
@@ -53,11 +64,18 @@ public class InterviewService {
     public List<InterviewResponse> getInterviewsByApplication(
             Long applicationId) {
 
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new ResourceNotFoundException(
-                    "Application not found with id: " + applicationId
-            );
-        }
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
+        // Verify that the application belongs to the current user
+        applicationRepository
+                .findByIdAndUserId(applicationId, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Application not found with id: "
+                                        + applicationId
+                        ));
 
         return interviewRepository
                 .findByApplicationId(applicationId)
@@ -66,10 +84,20 @@ public class InterviewService {
                 .toList();
     }
 
-    public InterviewResponse getInterviewById(Long id) {
+    public InterviewResponse getInterviewById(
+            Long applicationId,
+            Long id) {
+
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
 
         Interview interview = interviewRepository
-                .findById(id)
+                .findByIdAndApplicationIdAndApplication_User_Id(
+                        id,
+                        applicationId,
+                        userId
+                )
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Interview not found with id: " + id
@@ -79,11 +107,20 @@ public class InterviewService {
     }
 
     public InterviewResponse updateInterview(
+            Long applicationId,
             Long id,
             InterviewRequest request) {
 
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
+
         Interview interview = interviewRepository
-                .findById(id)
+                .findByIdAndApplicationIdAndApplication_User_Id(
+                        id,
+                        applicationId,
+                        userId
+                )
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Interview not found with id: " + id
@@ -100,18 +137,30 @@ public class InterviewService {
         return mapToResponse(updatedInterview);
     }
 
-    public void deleteInterview(Long id) {
+    public void deleteInterview(
+            Long applicationId,
+            Long id) {
 
-        if (!interviewRepository.existsById(id)) {
-            throw new ResourceNotFoundException(
-                    "Interview not found with id: " + id
-            );
-        }
+        Long userId = currentUserService
+                .getCurrentUser()
+                .getId();
 
-        interviewRepository.deleteById(id);
+        Interview interview = interviewRepository
+                .findByIdAndApplicationIdAndApplication_User_Id(
+                        id,
+                        applicationId,
+                        userId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Interview not found with id: " + id
+                        ));
+
+        interviewRepository.delete(interview);
     }
 
-    private InterviewResponse mapToResponse(Interview interview) {
+    private InterviewResponse mapToResponse(
+            Interview interview) {
 
         return InterviewResponse.builder()
                 .id(interview.getId())
