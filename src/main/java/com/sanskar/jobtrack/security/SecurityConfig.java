@@ -49,6 +49,7 @@ public class SecurityConfig {
         http
             // JobTrack is a stateless REST API using Bearer JWTs.
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> {})
 
             // Do not create server-side login sessions.
             .sessionManagement(session ->
